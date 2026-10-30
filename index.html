@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LaTeX Developer Activity Log</title>
+    <!-- PapaParse for easy CSV parsing -->
+    <script src="https://cloudflare.com"></script>
+    <style>
+        :root {
+            --bg-color: #f8f9fa;
+            --card-bg: #ffffff;
+            --text-color: #212529;
+            --border-color: #dee2e6;
+            --primary-color: #007bff;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        input, select {
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        input { flex: 1; }
+        select { width: 200px; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--card-bg);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        th {
+            background-color: #f1f3f5;
+            font-weight: 600;
+        }
+        tr:hover { background-color: #f8f9fa; }
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .badge-fix { background-color: #f8d7da; color: #721c24; }
+        .badge-feature { background-color: #d4edda; color: #155724; }
+        .badge-optimization { background-color: #cce5ff; color: #004085; }
+        .badge-default { background-color: #e2e3e5; color: #383d41; }
+        code {
+            background-color: #f1f3f5;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: "SFMono-Regular", Consolas, monospace;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>LaTeX Developer Activity Log</h1>
+    
+    <div class="controls">
+        <input type="text" id="searchInput" placeholder="Search problems or solutions...">
+        <select id="typeFilter">
+            <option value="">All Types</option>
+        </select>
+    </div>
+
+    <table id="logTable">
+        <thead>
+            <tr>
+                <th style="width: 12%">Date</th>
+                <th style="width: 10%">Type</th>
+                <th style="width: 38%">Problem</th>
+                <th style="width: 40%">Solution</th>
+            </tr>
+        </thead>
+        <tbody id="tableBody">
+            <tr>
+                <td colspan="4" style="text-align:center;">Loading logs...</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<script>
+    let logData = [];
+
+    // Fetch and parse the local CSV file
+    Papa.parse('log.csv', {
+        download: true,
+        header: true,
+        skipEmptyLines: true,
+        complete: function(results) {
+            logData = results.data;
+            populateTypeFilter(logData);
+            renderTable(logData);
+        },
+        error: function(err) {
+            document.getElementById('tableBody').innerHTML = `<tr><td colspan="4" style="text-align:center; color:red;">Error loading log.csv. Make sure the file exists in the same repository path.</td></tr>`;
+        }
+    });
+
+    function populateTypeFilter(data) {
+        const types = [...new Set(data.map(item => item.Type).filter(Boolean))];
+        const filter = document.getElementById('typeFilter');
+        types.forEach(type => {
+            const opt = document.createElement('option');
+            opt.value = type;
+            opt.textContent = type;
+            filter.appendChild(opt);
+        });
+    }
+
+    function getTypeBadgeClass(type) {
+        if (!type) return 'badge-default';
+        switch(type.toLowerCase().trim()) {
+            case 'fix': return 'badge-fix';
+            case 'feature': return 'badge-feature';
+            case 'optimization': return 'badge-optimization';
+            default: return 'badge-default';
+        }
+    }
+
+    // Helper to wrap LaTeX snippets inside text logs with <code> tags automatically
+    function formatLaTeX(text) {
+        if (!text) return '';
+        return text.replace(/(\\[a-zA-Z]+{.*?}|\\[a-zA-Z]+)/g, '<code>$1</code>');
+    }
+
+    function renderTable(data) {
+        const tbody = document.getElementById('tableBody');
+        tbody.innerHTML = '';
+
+        if(data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">No records found matching criteria.</td></tr>';
+            return;
+        }
+
+        // Sort by Date descending (newest first)
+        data.sort((a, b) => new Date(b.Date) - new Date(a.Date));
+
+        data.forEach(row => {
+            const tr = document.createElement('tr');
+            
+            tr.innerHTML = `
+                <td>${row.Date || ''}</td>
+                <td><span class="badge ${getTypeBadgeClass(row.Type)}">${row.Type || 'N/A'}</span></td>
+                <td>${formatLaTeX(row.Problem || '')}</td>
+                <td>${formatLaTeX(row.Solution || '')}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    // Search and Filter Logic
+    const searchInput = document.getElementById('searchInput');
+    const typeFilter = document.getElementById('typeFilter');
+
+    function filterData() {
+        const searchTerm = searchInput.value.toLowerCase();
+        const selectedType = typeFilter.value;
+
+        const filtered = logData.filter(row => {
+            const matchesSearch = (row.Problem || '').toLowerCase().includes(searchTerm) || 
+                                  (row.Solution || '').toLowerCase().includes(searchTerm);
+            const matchesType = !selectedType || row.Type === selectedType;
+            return matchesSearch && matchesType;
+        });
+
+        renderTable(filtered);
+    }
+
+    searchInput.addEventListener('input', filterData);
+    typeFilter.addEventListener('change', filterData);
+</script>
+
+</body>
+</html>

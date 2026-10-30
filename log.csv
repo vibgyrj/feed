@@ -1,0 +1,4 @@
+Date,Type,Problem,Solution
+2026-10-28,Fix,Overfull \hbox warning in bibliography,Used \sloppy inside the bibliography environment to allow looser spacing.
+2026-10-29,Feature,Custom command for math tensors,Created \newcommand{\tensor}[1]{\mathbf{\mathcal{#1}}} for uniform bold-script styling.
+2026-10-30,Optimization,Slow compilation times with tikz,Enabled the tikz externalize library to cache vector graphics.
